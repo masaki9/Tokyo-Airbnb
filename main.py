@@ -38,13 +38,121 @@ def remove_unnecessary_symbols(df, column):
     return df[column]
 
 
-df_listings['price'] = remove_unnecessary_symbols(df_listings, 'price')
-df_listings['weekly_price'] = remove_unnecessary_symbols(df_listings, 'weekly_price')
-df_listings['monthly_price'] = remove_unnecessary_symbols(df_listings, 'monthly_price')
-df_listings['extra_people'] = remove_unnecessary_symbols(df_listings, 'extra_people')
-df_listings['security_deposit'] = remove_unnecessary_symbols(df_listings, 'security_deposit')
-df_listings['cleaning_fee'] = remove_unnecessary_symbols(df_listings, 'cleaning_fee')
+columns_to_clean = ['price', 'weekly_price', 'monthly_price', 'extra_people', 'security_deposit', 'cleaning_fee']
 
+for column in columns_to_clean:
+    df_listings[column] = remove_unnecessary_symbols(df_listings, column)
+
+# df_listings['price'] = remove_unnecessary_symbols(df_listings, 'price')
+# df_listings['weekly_price'] = remove_unnecessary_symbols(df_listings, 'weekly_price')
+# df_listings['monthly_price'] = remove_unnecessary_symbols(df_listings, 'monthly_price')
+# df_listings['extra_people'] = remove_unnecessary_symbols(df_listings, 'extra_people')
+# df_listings['security_deposit'] = remove_unnecessary_symbols(df_listings, 'security_deposit')
+# df_listings['cleaning_fee'] = remove_unnecessary_symbols(df_listings, 'cleaning_fee')
+
+# %% Summary Statistics
+avg_price = np.mean(df_listings["price"])
+print("Average Listing Price: {} Yen".format(avg_price))
+
+max_price = np.max(df_listings["price"])
+print("Maximum Listing Price: {} Yen".format(max_price))
+
+min_price = np.min(df_listings["price"])
+print("Minimum Listing Price: {} Yen".format(min_price))
+
+# Average Listing Price: 23982.066169378177 Yen
+# Maximum Listing Price: 1063924.0 Yen
+# Minimum Listing Price: 0.0 Yen
+
+# %% Average Price by Neighbourhood
+# Determine most expensive neighborhood on average
+neighbourhoods = df_listings['neighbourhood_cleansed'].unique()
+avg_neigh_prices = np.zeros(len(neighbourhoods))
+
+for neighbourhood in range(len(neighbourhoods)):
+    list_of_neigh_price = df_listings.loc[df_listings['neighbourhood_cleansed'] == neighbourhoods[neighbourhood], 'price']
+    avg_price_single_neigh = np.mean(list_of_neigh_price)
+    avg_neigh_prices[neighbourhood] = avg_price_single_neigh
+
+print("Average Prices by Neighborhood\n")
+
+for i in range(len(neighbourhoods)):
+    print(neighbourhoods[i] + ": {:0.0f} Yen".format(avg_neigh_prices[i]))
+
+fig, ax = plt.subplots()
+rects = ax.bar(neighbourhoods, avg_neigh_prices)
+
+ax.set_xlabel("Neighbourhood", fontsize=14)
+ax.set_ylabel('Price', fontsize=14)
+ax.set_title('Average Price of Tokyo Airbnb by Neighbourhood', fontsize=20)
+plt.xticks(rotation='vertical', fontsize=14)
+plt.yticks(fontsize=14)
+plt.rcParams['figure.figsize'] = (16,8)
+plt.show()
+
+# %% Popular Neighbourhoods in Tokyo
+
+# Find the most popular neighborhoods.
+neighbourhood_counts = df_listings["neighbourhood_cleansed"].value_counts()
+
+# print(df_listings["neighbourhood_cleansed"].unique().tolist())
+print("Number of Tokyo Neighbourhoods: {}".format(len(df_listings["neighbourhood_cleansed"].unique().tolist())))
+
+print(neighbourhood_counts)
+
+# Small workaround here since the indexing was weird in the provided data structure
+neighbourhoods = np.asarray(neighbourhood_counts.axes)[0]
+counts = neighbourhood_counts.values
+
+fig, ax = plt.subplots()
+rects = ax.bar(neighbourhoods, counts)
+ax.set_xlabel("Neighborhood")
+ax.set_ylabel("Number of rentals")
+ax.set_title("Number of Bookings per Neighborhood")
+plt.xticks(rotation='vertical')
+plt.show()
+
+# Top 5 neighbourhoods are Shinjuku, Taito, Toshima, Sumida, and Shibuya.
+
+# %% Distribution of Types of Rooms
+print(df_listings["room_type"].value_counts())
+
+num_entire = np.where(df_listings["room_type"] == "Entire home/apt")[0].size
+num_private = np.where(df_listings["room_type"] == "Private room")[0].size
+num_shared = np.where(df_listings["room_type"] == "Shared room")[0].size
+num_hotel_room = np.where(df_listings["room_type"] == "Hotel room")[0].size
+
+labels = 'Entire Home/Apt', 'Private Room', 'Shared Room', 'Hotel Room'
+sizes = [num_entire, num_private, num_shared, num_hotel_room]
+
+fig, ax = plt.subplots()
+ax.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=90)
+plt.title("Distribution of Types of Rooms")
+plt.show()
+
+# %% Distribution of Cancellation Policies
+print(df_listings["cancellation_policy"].value_counts())
+
+num_strict = np.where((df_listings["cancellation_policy"] == "strict")
+                      | (df_listings["cancellation_policy"] == "strict_14_with_grace_period")
+                      | (df_listings["cancellation_policy"] == "super_strict_30")
+                      | (df_listings["cancellation_policy"] == "super_strict_60"))[0].size
+
+num_moderate = np.where(df_listings["cancellation_policy"] == "moderate")[0].size
+num_flexible = np.where(df_listings["cancellation_policy"] == "flexible")[0].size
+
+labels = 'Strict', 'Moderate', 'Flexible'
+sizes = [num_strict, num_moderate, num_flexible]
+
+# color scheme from https://medium.com/@kvnamipara/a-better-visualisation-of-pie-charts-by-matplotlib-935b7667d77f
+# colors = ['#ff9999','#66b3ff','#99ff99','#ffcc99']
+
+fig, ax = plt.subplots()
+# ax.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, shadow=True, startangle=90)
+ax.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=90)
+# ax.axis('equal')
+plt.title("Distribution of Cancellation Policies")
+plt.show()
 
 # %% Which columns have the most missing values?
 def missing_data(df):

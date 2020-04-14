@@ -28,6 +28,24 @@ df_listings.shape
 df_listings.isnull().sum().sum()
 # 187136 missing values
 
+# %% Clean Data
+def remove_unnecessary_symbols(df, column):
+    # Remove the dollar signs and commas in the column.
+    df[column] = df_listings[column].astype(str)
+    df[column] = df[column].str.replace('$', '')
+    df[column] = df[column].str.replace(',', '')
+    df[column] = df[column].astype(float)
+    return df[column]
+
+
+df_listings['price'] = remove_unnecessary_symbols(df_listings, 'price')
+df_listings['weekly_price'] = remove_unnecessary_symbols(df_listings, 'weekly_price')
+df_listings['monthly_price'] = remove_unnecessary_symbols(df_listings, 'monthly_price')
+df_listings['extra_people'] = remove_unnecessary_symbols(df_listings, 'extra_people')
+df_listings['security_deposit'] = remove_unnecessary_symbols(df_listings, 'security_deposit')
+df_listings['cleaning_fee'] = remove_unnecessary_symbols(df_listings, 'cleaning_fee')
+
+
 # %% Which columns have the most missing values?
 def missing_data(df):
     total = df.isnull().sum()
@@ -55,10 +73,25 @@ plt.title('Percent missing data by feature', fontsize=15)
 sns.barplot(missing_values_count[:10].index.values, missing_values_count[:10], color = base_color)
 plt.show()
 
-# %%
+# %% Describe numerical features
 df_listings.describe()
 
 # %%
 df_listings.hist(bins=50, figsize=(40,30))
 plt.tight_layout(pad=0.4)
+plt.show()
+
+# %% Describe categorical features
+df_listings.describe(include='O')
+
+# %% What are the most correlated features?
+corr_matrix = df_listings.corr()
+plt.subplots(figsize=(30,20))
+# sns.heatmap(corr_matrix, xticklabels=corr_matrix.columns, yticklabels=corr_matrix.columns,
+#             vmax=1.0, square=True, cmap="Blues")
+
+# with annotation
+sns.heatmap(corr_matrix, xticklabels=corr_matrix.columns, yticklabels=corr_matrix.columns,
+            vmax=1.0, square=True, cmap="Blues", annot=True, fmt='.2f')
+
 plt.show()

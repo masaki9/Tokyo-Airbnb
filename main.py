@@ -28,7 +28,7 @@ df_listings.shape
 df_listings.isnull().sum().sum()
 # 187136 missing values
 
-# %% Clean Data
+# %% Clean Data - Remove Unnecessary Symbols
 def remove_unnecessary_symbols(df, column):
     # Remove the dollar signs and commas in the column.
     df[column] = df_listings[column].astype(str)
@@ -43,12 +43,47 @@ columns_to_clean = ['price', 'weekly_price', 'monthly_price', 'extra_people', 's
 for column in columns_to_clean:
     df_listings[column] = remove_unnecessary_symbols(df_listings, column)
 
-# df_listings['price'] = remove_unnecessary_symbols(df_listings, 'price')
-# df_listings['weekly_price'] = remove_unnecessary_symbols(df_listings, 'weekly_price')
-# df_listings['monthly_price'] = remove_unnecessary_symbols(df_listings, 'monthly_price')
-# df_listings['extra_people'] = remove_unnecessary_symbols(df_listings, 'extra_people')
-# df_listings['security_deposit'] = remove_unnecessary_symbols(df_listings, 'security_deposit')
-# df_listings['cleaning_fee'] = remove_unnecessary_symbols(df_listings, 'cleaning_fee')
+
+# %% Which columns have the most missing values?
+def missing_data(df):
+    total = df.isnull().sum()
+    percent = (df.isnull().sum()/df.isnull().count()*100)
+    missing_values = pd.concat([total, percent], axis=1, keys=['Total', 'Percent'])
+
+    types = []
+    for col in df.columns:
+        dtype = str(df[col].dtype)
+        types.append(dtype)
+
+    missing_values['Types'] = types
+    missing_values.sort_values('Total', ascending=False, inplace=True)
+
+    return np.transpose(missing_values)
+
+missing_data(df_listings)
+
+# x = missing_data(df_listings)
+# print(type(x))
+# The following columns have 98+ percent rate of missing values.
+# thumbnail_url neighbourhood_group_cleansed jurisdiction_names xl_picture_url medium_url square_feet monthly_price weekly_price
+
+# %% Let's plot these missing values(%) vs column_names. Top 10 Features with the most missing values.
+missing_values_count = (df_listings.isnull().sum()/df_listings.isnull().count()*100).sort_values(ascending=False)
+plt.figure(figsize=(20,10))
+base_color = sns.color_palette()[0]
+plt.xlabel('Features', fontsize=15)
+plt.ylabel('Percent of missing values', fontsize=15)
+plt.title('Percent missing data by feature', fontsize=15)
+sns.barplot(missing_values_count[:10].index.values, missing_values_count[:10], color=base_color)
+plt.show()
+
+# %% Let's drop features with high missing data rate.
+# The following columns have 98+ percent rate of missing values.
+# thumbnail_url neighbourhood_group_cleansed jurisdiction_names xl_picture_url medium_url square_feet monthly_price weekly_price
+
+columns_to_drop = ['thumbnail_url', 'neighbourhood_group_cleansed', 'jurisdiction_names', 'xl_picture_url', 'medium_url', 'square_feet', 'monthly_price', 'weekly_price']
+df_listings.drop(columns_to_drop, axis=1, inplace=True)
+
 
 # %% Summary Statistics
 avg_price = np.mean(df_listings["price"])
@@ -64,6 +99,7 @@ print("Minimum Listing Price: {} Yen".format(min_price))
 # Maximum Listing Price: 1063924.0 Yen
 # Minimum Listing Price: 0.0 Yen
 
+
 # %% Average Price by Neighbourhood
 # Determine most expensive neighborhood on average
 neighbourhoods = df_listings['neighbourhood_cleansed'].unique()
@@ -71,6 +107,63 @@ avg_neigh_prices = np.zeros(len(neighbourhoods))
 
 for neighbourhood in range(len(neighbourhoods)):
     list_of_neigh_price = df_listings.loc[df_listings['neighbourhood_cleansed'] == neighbourhoods[neighbourhood], 'price']
+    avg_price_single_neigh = np.mean(list_of_neigh_price)
+    avg_neigh_prices[neighbourhood] = avg_price_single_neigh
+
+print("Average Prices by Neighborhood\n")
+
+for i in range(len(neighbourhoods)):
+    print(neighbourhoods[i] + ": {:0.0f} Yen".format(avg_neigh_prices[i]))
+
+fig, ax = plt.subplots()
+rects = ax.bar(neighbourhoods, avg_neigh_prices)
+
+ax.set_xlabel("Neighbourhood", fontsize=14)
+ax.set_ylabel('Price', fontsize=14)
+ax.set_title('Average Price of Tokyo Airbnb by Neighbourhood', fontsize=20)
+plt.xticks(rotation='vertical', fontsize=14)
+plt.yticks(fontsize=14)
+plt.rcParams['figure.figsize'] = (16,8)
+plt.show()
+
+# %% Box Plot
+base_color = sns.color_palette()[0]
+plt.figure(figsize=(40,15))
+plt.xticks(rotation=45)
+plt.yticks(np.arange(0, 1200000, step=50000))
+sns.boxplot(data=df_listings, x='neighbourhood_cleansed', y='price', color= base_color)
+plt.show()
+
+# %% Price Distribution Plot
+col_name = 'price'
+hist_kws={"alpha": 0.3}
+plt.figure(figsize=(30,10))
+# Trim long-tail/other values
+# plt.xlim(0, 1200)
+plt.xticks(np.arange(0, 1000000, step=25000))
+sns.distplot(df_listings[col_name], hist_kws=hist_kws)
+plt.show()
+
+# %%
+# Remove outliers and print stats
+print()
+df2 = df_listings[df_listings['price'] < 110000]
+avg_price2 = np.mean(df2["price"])
+print("Average Listing Price: {} Yen".format(avg_price2))
+
+max_price2 = np.max(df2["price"])
+print("Maximum Listing Price: {} Yen".format(max_price2))
+
+min_price2 = np.min(df2["price"])
+print("Minimum Listing Price: {} Yen".format(min_price2))
+
+# %% Average Price by Neighbourhood (after removing outliers)
+# Determine most expensive neighborhood on average
+neighbourhoods = df2['neighbourhood_cleansed'].unique()
+avg_neigh_prices = np.zeros(len(neighbourhoods))
+
+for neighbourhood in range(len(neighbourhoods)):
+    list_of_neigh_price = df2.loc[df2['neighbourhood_cleansed'] == neighbourhoods[neighbourhood], 'price']
     avg_price_single_neigh = np.mean(list_of_neigh_price)
     avg_neigh_prices[neighbourhood] = avg_price_single_neigh
 
@@ -154,32 +247,6 @@ ax.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=90)
 plt.title("Distribution of Cancellation Policies")
 plt.show()
 
-# %% Which columns have the most missing values?
-def missing_data(df):
-    total = df.isnull().sum()
-    percent = (df.isnull().sum()/df.isnull().count()*100)
-    missing_values = pd.concat([total, percent], axis=1, keys=['Total', 'Percent'])
-    types = []
-    for col in df.columns:
-        dtype = str(df[col].dtype)
-        types.append(dtype)
-    missing_values['Types'] = types
-    missing_values.sort_values('Total',ascending=False,inplace=True)
-    return(np.transpose(missing_values))
-
-missing_data(df_listings)
-# The following columns have 98+ percent rate of missing values.
-# thumbnail_url neighbourhood_group_cleansed jurisdiction_names xl_picture_url medium_url square_feet monthly_price weekly_price
-
-# %% Let's plot these missing values(%) vs column_names. Top 10 Features with the most missing values.
-missing_values_count = (df_listings.isnull().sum()/df_listings.isnull().count()*100).sort_values(ascending=False)
-plt.figure(figsize=(20,10))
-base_color = sns.color_palette()[0]
-plt.xlabel('Features', fontsize=15)
-plt.ylabel('Percent of missing values', fontsize=15)
-plt.title('Percent missing data by feature', fontsize=15)
-sns.barplot(missing_values_count[:10].index.values, missing_values_count[:10], color = base_color)
-plt.show()
 
 # %% Describe numerical features
 df_listings.describe()
@@ -203,3 +270,7 @@ sns.heatmap(corr_matrix, xticklabels=corr_matrix.columns, yticklabels=corr_matri
             vmax=1.0, square=True, cmap="Blues", annot=True, fmt='.2f')
 
 plt.show()
+
+# Get the top 10 most correlated features for prices
+corr_matrix = df_listings.corr()
+corr_matrix['price'].sort_values(ascending=False)[:10]

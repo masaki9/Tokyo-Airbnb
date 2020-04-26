@@ -273,4 +273,74 @@ plt.show()
 
 # Get the top 10 most correlated features for prices
 corr_matrix = df_listings.corr()
-corr_matrix['price'].sort_values(ascending=False)[:10]
+corr_matrix['price'].sort_values(ascending=False)[1:11]
+
+# %% Scatter Plot of Review Rating Versus Price
+plt.scatter(df_listings['price'], df_listings['review_scores_rating'])
+plt.xlabel('Price in Yen')
+plt.ylabel('Review Score')
+# plt.rcParams['figure.figsize'] = (32,8)
+# plt.xticks(np.arange(0, 1200000, step=30000))
+plt.title('Scatter Plot of Review Rating Versus Price')
+plt.show()
+
+# It seems that a high price does not lead to a high review score.
+# There are so many listings with a high score in the range between 0 and 20000 yen.
+
+
+
+
+
+
+
+# %%
+
+# df_reviews = pd.read_csv(data_reviews, index_col=0, sep=',')
+# df_listings = pd.read_csv(data_listings, index_col=0, sep=',')
+df_review_scores = df_listings[['review_scores_rating']]
+
+df_reviews_w_comments = pd.merge(df_review_scores, df_reviews, left_on='id', right_on='listing_id', how='inner')
+
+# %%
+df_reviews_w_comments.shape
+# (416394, 5)
+
+# %%
+df_reviews_w_comments.isnull().sum()
+
+# %%
+df_reviews_w_comments.dropna(subset=['review_scores_rating', 'comments'], inplace=True)
+
+# %%
+df_reviews_w_comments.isnull().sum()
+
+# %%
+df_reviews_w_comments.shape
+# (416070, 5)
+
+# %% Summary Statistics
+avg_rating = np.mean(df_reviews_w_comments["review_scores_rating"])
+print("Average Review Scores Rating: {}".format(avg_rating))
+
+max_rating = np.max(df_reviews_w_comments["review_scores_rating"])
+print("Maximum Review Scores Rating: {}".format(max_rating))
+
+min_rating = np.min(df_reviews_w_comments["review_scores_rating"])
+print("Minimum Review Scores Rating: {}".format(min_rating))
+
+# %% Box Plot
+base_color = sns.color_palette()[0]
+plt.figure(figsize=(12,20))
+sns.boxplot(data=df_reviews_w_comments, y='review_scores_rating', color= base_color)
+plt.show()
+
+# %% Price Distribution Plot
+col_name = 'review_scores_rating'
+hist_kws={"alpha": 0.3}
+plt.figure(figsize=(20,10))
+# Trim long-tail/other values
+# plt.xlim(0, 1200)
+plt.xticks(np.arange(0, 101, step=5))
+sns.distplot(df_reviews_w_comments[col_name], hist_kws=hist_kws)
+plt.show()
+

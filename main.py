@@ -16,6 +16,7 @@ data_calendar = "data/calendar.csv"
 
 df_reviews = pd.read_csv(data_reviews, index_col=0, sep=',')
 df_listings = pd.read_csv(data_listings, index_col=0, sep=',')
+df_calendar = pd.read_csv(data_calendar, index_col=0, sep=',')
 
 # %%
 df_listings.head(5)
@@ -84,6 +85,12 @@ plt.show()
 columns_to_drop = ['thumbnail_url', 'neighbourhood_group_cleansed', 'jurisdiction_names', 'xl_picture_url', 'medium_url', 'square_feet', 'monthly_price', 'weekly_price']
 df_listings.drop(columns_to_drop, axis=1, inplace=True)
 
+# %%
+columns_to_drop = ['listing_url', 'scrape_id', 'last_scraped', 'host_picture_url', 'host_neighbourhood', 'host_verifications', 'host_has_profile_pic', 'host_identity_verified', 'street',
+                   'neighbourhood', 'zipcode', 'market', 'smart_location', 'country_code', 'country', 'latitude', 'longitude', 'is_location_exact', 'calendar_updated', 'has_availability',
+                   'calendar_last_scraped', 'first_review', 'last_review', 'requires_license', 'license', 'instant_bookable', 'is_business_travel_ready', 'require_guest_profile_picture',
+                   'require_guest_phone_verification']
+df_listings.drop(columns_to_drop, axis=1, inplace=True)
 
 # %% Summary Statistics
 avg_price = np.mean(df_listings["price"])
@@ -111,19 +118,30 @@ for neighbourhood in range(len(neighbourhoods)):
     avg_neigh_prices[neighbourhood] = avg_price_single_neigh
 
 print("Average Prices by Neighborhood\n")
-
 for i in range(len(neighbourhoods)):
     print(neighbourhoods[i] + ": {:0.0f} Yen".format(avg_neigh_prices[i]))
 
-fig, ax = plt.subplots()
-rects = ax.bar(neighbourhoods, avg_neigh_prices)
+df_avg_neigh_prices = pd.DataFrame(list(zip(neighbourhoods, avg_neigh_prices)), columns=['neighbourhood', 'price']).sort_values(by='price', ascending=False)
 
-ax.set_xlabel("Neighbourhood", fontsize=14)
-ax.set_ylabel('Price', fontsize=14)
-ax.set_title('Average Price of Tokyo Airbnb by Neighbourhood', fontsize=20)
+plt.figure(figsize=(16,8))
+plt.bar(df_avg_neigh_prices['neighbourhood'], df_avg_neigh_prices['price'], color='lightblue')
 plt.xticks(rotation='vertical', fontsize=14)
 plt.yticks(fontsize=14)
-plt.rcParams['figure.figsize'] = (16,8)
+plt.xlabel("Neighbourhood", fontsize=14)
+plt.ylabel('Price (Yen)', fontsize=14)
+plt.title('Average Price of Tokyo Airbnb by Neighbourhood', fontsize=20)
+plt.show()
+
+# %% Top 10 Neighbourhood by Average Price
+df_avg_neigh_prices = pd.DataFrame(list(zip(neighbourhoods, avg_neigh_prices)), columns=['neighbourhood', 'price']).sort_values(by='price', ascending=False)
+
+plt.figure(figsize=(16,10))
+plt.bar(df_avg_neigh_prices['neighbourhood'][:10], df_avg_neigh_prices['price'][:10], color='lightblue')
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+plt.xlabel("Neighbourhood", fontsize=14)
+plt.ylabel('Price (Yen)', fontsize=14)
+plt.title('Top 10 Neighbourhoods by Average Price', fontsize=20)
 plt.show()
 
 # %% Box Plot
@@ -131,81 +149,79 @@ base_color = sns.color_palette()[0]
 plt.figure(figsize=(40,15))
 plt.xticks(rotation=45)
 plt.yticks(np.arange(0, 1200000, step=50000))
-sns.boxplot(data=df_listings, x='neighbourhood_cleansed', y='price', color= base_color)
+sns.boxplot(data=df_listings, x='neighbourhood_cleansed', y='price', color=base_color)\
+    .set(ylabel='Price (Yen)', xlabel='Neighbourhood')
 plt.show()
 
 # %% Price Distribution Plot
-col_name = 'price'
 hist_kws={"alpha": 0.3}
 plt.figure(figsize=(30,10))
-# Trim long-tail/other values
-# plt.xlim(0, 1200)
 plt.xticks(np.arange(0, 1000000, step=25000))
-sns.distplot(df_listings[col_name], hist_kws=hist_kws)
+sns.distplot(df_listings['price'], hist_kws=hist_kws).set(xlabel='Price (Yen)')
+plt.show()
+
+# %% Frequency Histogram
+plt.figure(figsize=(30,10))
+plt.xticks(np.arange(0, 1000000, step=25000))
+plt.hist(df_listings['price'], bins=500)
+plt.xlabel("Price (Yen)")
 plt.show()
 
 # %%
 # Remove outliers and print stats
 print()
-df2 = df_listings[df_listings['price'] < 110000]
-avg_price2 = np.mean(df2["price"])
+df_listings_no_outliers = df_listings[df_listings['price'] < 110000]
+avg_price2 = np.mean(df_listings_no_outliers["price"])
 print("Average Listing Price: {} Yen".format(avg_price2))
 
-max_price2 = np.max(df2["price"])
+max_price2 = np.max(df_listings_no_outliers["price"])
 print("Maximum Listing Price: {} Yen".format(max_price2))
 
-min_price2 = np.min(df2["price"])
+min_price2 = np.min(df_listings_no_outliers["price"])
 print("Minimum Listing Price: {} Yen".format(min_price2))
 
 # %% Average Price by Neighbourhood (after removing outliers)
 # Determine most expensive neighborhood on average
-neighbourhoods = df2['neighbourhood_cleansed'].unique()
+neighbourhoods = df_listings_no_outliers['neighbourhood_cleansed'].unique()
 avg_neigh_prices = np.zeros(len(neighbourhoods))
 
 for neighbourhood in range(len(neighbourhoods)):
-    list_of_neigh_price = df2.loc[df2['neighbourhood_cleansed'] == neighbourhoods[neighbourhood], 'price']
+    list_of_neigh_price = df_listings_no_outliers.loc[df_listings_no_outliers['neighbourhood_cleansed'] == neighbourhoods[neighbourhood], 'price']
     avg_price_single_neigh = np.mean(list_of_neigh_price)
     avg_neigh_prices[neighbourhood] = avg_price_single_neigh
 
 print("Average Prices by Neighborhood\n")
-
 for i in range(len(neighbourhoods)):
     print(neighbourhoods[i] + ": {:0.0f} Yen".format(avg_neigh_prices[i]))
 
-fig, ax = plt.subplots()
-rects = ax.bar(neighbourhoods, avg_neigh_prices)
+df_avg_neigh_prices2 = pd.DataFrame(list(zip(neighbourhoods, avg_neigh_prices)), columns=['neighbourhood', 'price']).sort_values(by='price', ascending=False)
 
-ax.set_xlabel("Neighbourhood", fontsize=14)
-ax.set_ylabel('Price', fontsize=14)
-ax.set_title('Average Price of Tokyo Airbnb by Neighbourhood', fontsize=20)
+plt.figure(figsize=(16,8))
+plt.bar(df_avg_neigh_prices2['neighbourhood'], df_avg_neigh_prices2['price'])
 plt.xticks(rotation='vertical', fontsize=14)
 plt.yticks(fontsize=14)
-plt.rcParams['figure.figsize'] = (16,8)
+plt.xlabel("Neighbourhood", fontsize=14)
+plt.ylabel('Price (Yen)', fontsize=14)
+plt.title('Average Price of Tokyo Airbnb by Neighbourhood (Without Outliers)', fontsize=20)
 plt.show()
 
 # %% Popular Neighbourhoods in Tokyo
+# Top 10 Neighbourhoods (by # of bookings)
 
-# Find the most popular neighborhoods.
-neighbourhood_counts = df_listings["neighbourhood_cleansed"].value_counts()
+counts = df_listings["neighbourhood_cleansed"].value_counts()
+neigh_counts = counts.tolist()
+neighbourhoods = df_listings["neighbourhood_cleansed"].value_counts().index.tolist()
+df_popular_neighbourhoods = pd.DataFrame(list(zip(neighbourhoods, neigh_counts)),
+                                         columns=['neighbourhood', 'num_bookings'])
 
-# print(df_listings["neighbourhood_cleansed"].unique().tolist())
-print("Number of Tokyo Neighbourhoods: {}".format(len(df_listings["neighbourhood_cleansed"].unique().tolist())))
-
-print(neighbourhood_counts)
-
-# Small workaround here since the indexing was weird in the provided data structure
-neighbourhoods = np.asarray(neighbourhood_counts.axes)[0]
-counts = neighbourhood_counts.values
-
-fig, ax = plt.subplots()
-rects = ax.bar(neighbourhoods, counts)
-ax.set_xlabel("Neighborhood")
-ax.set_ylabel("Number of rentals")
-ax.set_title("Number of Bookings per Neighborhood")
-plt.xticks(rotation='vertical')
+plt.figure(figsize=(16,10))
+plt.bar(df_popular_neighbourhoods['neighbourhood'][:10], df_popular_neighbourhoods['num_bookings'][:10], color='lightblue')
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+plt.xlabel("Neighbourhood", fontsize=14)
+plt.ylabel('Number of Bookings', fontsize=14)
+plt.title('Top 10 Neighbourhoods by Number of Bookings', fontsize=20)
 plt.show()
-
-# Top 5 neighbourhoods are Shinjuku, Taito, Toshima, Sumida, and Shibuya.
 
 # %% Distribution of Types of Rooms
 print(df_listings["room_type"].value_counts())
@@ -217,10 +233,18 @@ num_hotel_room = np.where(df_listings["room_type"] == "Hotel room")[0].size
 
 labels = 'Entire Home/Apt', 'Private Room', 'Shared Room', 'Hotel Room'
 sizes = [num_entire, num_private, num_shared, num_hotel_room]
+colors = ['lightpink','lightblue','lightgreen','beige']
 
 fig, ax = plt.subplots()
-ax.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=90)
-plt.title("Distribution of Types of Rooms")
+ax.pie(sizes, labels=labels, autopct='%1.1f%%',  colors=colors, shadow=True, startangle=90, pctdistance=0.8)
+plt.rcParams['font.size'] = 14
+plt.title("Distribution of Types of Rooms", fontsize=20)
+
+# Draw white circle
+centre_circle = plt.Circle((0,0), 0.60, fc='white')
+fig1 = plt.gcf()
+fig1.gca().add_artist(centre_circle)
+
 plt.show()
 
 # %% Distribution of Cancellation Policies
@@ -236,15 +260,18 @@ num_flexible = np.where(df_listings["cancellation_policy"] == "flexible")[0].siz
 
 labels = 'Strict', 'Moderate', 'Flexible'
 sizes = [num_strict, num_moderate, num_flexible]
-
-# color scheme from https://medium.com/@kvnamipara/a-better-visualisation-of-pie-charts-by-matplotlib-935b7667d77f
-# colors = ['#ff9999','#66b3ff','#99ff99','#ffcc99']
+colors = ['lightpink','lightblue','lightgreen','beige']
 
 fig, ax = plt.subplots()
-# ax.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, shadow=True, startangle=90)
-ax.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=90)
-# ax.axis('equal')
-plt.title("Distribution of Cancellation Policies")
+ax.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, shadow=True, startangle=90, pctdistance=0.8)
+plt.rcParams['font.size'] = 14
+plt.title("Distribution of Cancellation Policies", fontsize=20)
+
+# Draw white circle
+centre_circle = plt.Circle((0,0), 0.60, fc='white')
+fig1 = plt.gcf()
+fig1.gca().add_artist(centre_circle)
+
 plt.show()
 
 

@@ -196,10 +196,7 @@ def modelAndPredict(X, target):
         X, target, train_size=0.70, test_size=0.30
     )
 
-    # model.fit(X_train, y_train.values.ravel())
     model.fit(X_train, y_train)
-
-    # Use .values.ravel() on y_train to solve DataConversionWarning.
 
     # Get the mean accuracy on the given test data and labels.
     score = model.score(X_test, y_test)

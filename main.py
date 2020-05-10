@@ -1,9 +1,16 @@
 # %%
-from sklearn.linear_model import LinearRegression
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+from math import sqrt
+from pandas.plotting import scatter_matrix
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split, KFold
+from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.model_selection import cross_val_score
 
 # %%
 pd.set_option('display.max_columns', None)
@@ -22,10 +29,17 @@ df_calendar = pd.read_csv(data_calendar, index_col=0, sep=',')
 df_listings.head(5)
 
 # %% How many datapoints in the listings dataset?
+print("How many datapoints in the listings dataset?")
 df_listings.shape
 # (15551, 105)
 
+# %%
+print("How many datapoints in the reviews dataset?")
+df_reviews.shape
+# (416394, 5)
+
 # %% How many missing values does the listing dataset have?
+print("How many missing values does the listing dataset have?")
 df_listings.isnull().sum().sum()
 # 187136 missing values
 
@@ -46,6 +60,8 @@ for column in columns_to_clean:
 
 
 # %% Which columns have the most missing values?
+print("Which columns have the most missing values?")
+
 def missing_data(df):
     total = df.isnull().sum()
     percent = (df.isnull().sum()/df.isnull().count()*100)
@@ -63,8 +79,9 @@ def missing_data(df):
 
 missing_data(df_listings)
 
-# x = missing_data(df_listings)
-# print(type(x))
+x = missing_data(df_listings)
+print(x)
+
 # The following columns have 98+ percent rate of missing values.
 # thumbnail_url neighbourhood_group_cleansed jurisdiction_names xl_picture_url medium_url square_feet monthly_price weekly_price
 
@@ -85,14 +102,9 @@ plt.show()
 columns_to_drop = ['thumbnail_url', 'neighbourhood_group_cleansed', 'jurisdiction_names', 'xl_picture_url', 'medium_url', 'square_feet', 'monthly_price', 'weekly_price']
 df_listings.drop(columns_to_drop, axis=1, inplace=True)
 
-# %%
-columns_to_drop = ['listing_url', 'scrape_id', 'last_scraped', 'host_picture_url', 'host_neighbourhood', 'host_verifications', 'host_has_profile_pic', 'host_identity_verified', 'street',
-                   'neighbourhood', 'zipcode', 'market', 'smart_location', 'country_code', 'country', 'latitude', 'longitude', 'is_location_exact', 'calendar_updated', 'has_availability',
-                   'calendar_last_scraped', 'first_review', 'last_review', 'requires_license', 'license', 'instant_bookable', 'is_business_travel_ready', 'require_guest_profile_picture',
-                   'require_guest_phone_verification']
-df_listings.drop(columns_to_drop, axis=1, inplace=True)
-
 # %% Summary Statistics
+print()
+
 avg_price = np.mean(df_listings["price"])
 print("Average Listing Price: {} Yen".format(avg_price))
 
@@ -117,7 +129,7 @@ for neighbourhood in range(len(neighbourhoods)):
     avg_price_single_neigh = np.mean(list_of_neigh_price)
     avg_neigh_prices[neighbourhood] = avg_price_single_neigh
 
-print("Average Prices by Neighborhood\n")
+print("\nAverage Prices by Neighborhood")
 for i in range(len(neighbourhoods)):
     print(neighbourhoods[i] + ": {:0.0f} Yen".format(avg_neigh_prices[i]))
 
@@ -144,6 +156,23 @@ plt.ylabel('Price (Yen)', fontsize=14)
 plt.title('Top 10 Neighbourhoods by Average Price', fontsize=20)
 plt.show()
 
+# %% Popular Neighbourhoods in Tokyo
+# Top 10 Neighbourhoods by # of bookings
+counts = df_listings["neighbourhood_cleansed"].value_counts()
+neigh_counts = counts.tolist()
+neighbourhoods = df_listings["neighbourhood_cleansed"].value_counts().index.tolist()
+df_popular_neighbourhoods = pd.DataFrame(list(zip(neighbourhoods, neigh_counts)),
+                                         columns=['neighbourhood', 'num_bookings'])
+
+plt.figure(figsize=(16,10))
+plt.bar(df_popular_neighbourhoods['neighbourhood'][:10], df_popular_neighbourhoods['num_bookings'][:10], color='lightblue')
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+plt.xlabel("Neighbourhood", fontsize=14)
+plt.ylabel('Number of Bookings', fontsize=14)
+plt.title('Top 10 Neighbourhoods by Number of Bookings', fontsize=20)
+plt.show()
+
 # %% Box Plot
 base_color = sns.color_palette()[0]
 plt.figure(figsize=(40,15))
@@ -167,63 +196,8 @@ plt.hist(df_listings['price'], bins=500)
 plt.xlabel("Price (Yen)")
 plt.show()
 
-# %%
-# Remove outliers and print stats
-print()
-df_listings_no_outliers = df_listings[df_listings['price'] < 110000]
-avg_price2 = np.mean(df_listings_no_outliers["price"])
-print("Average Listing Price: {} Yen".format(avg_price2))
-
-max_price2 = np.max(df_listings_no_outliers["price"])
-print("Maximum Listing Price: {} Yen".format(max_price2))
-
-min_price2 = np.min(df_listings_no_outliers["price"])
-print("Minimum Listing Price: {} Yen".format(min_price2))
-
-# %% Average Price by Neighbourhood (after removing outliers)
-# Determine most expensive neighborhood on average
-neighbourhoods = df_listings_no_outliers['neighbourhood_cleansed'].unique()
-avg_neigh_prices = np.zeros(len(neighbourhoods))
-
-for neighbourhood in range(len(neighbourhoods)):
-    list_of_neigh_price = df_listings_no_outliers.loc[df_listings_no_outliers['neighbourhood_cleansed'] == neighbourhoods[neighbourhood], 'price']
-    avg_price_single_neigh = np.mean(list_of_neigh_price)
-    avg_neigh_prices[neighbourhood] = avg_price_single_neigh
-
-print("Average Prices by Neighborhood\n")
-for i in range(len(neighbourhoods)):
-    print(neighbourhoods[i] + ": {:0.0f} Yen".format(avg_neigh_prices[i]))
-
-df_avg_neigh_prices2 = pd.DataFrame(list(zip(neighbourhoods, avg_neigh_prices)), columns=['neighbourhood', 'price']).sort_values(by='price', ascending=False)
-
-plt.figure(figsize=(16,8))
-plt.bar(df_avg_neigh_prices2['neighbourhood'], df_avg_neigh_prices2['price'])
-plt.xticks(rotation='vertical', fontsize=14)
-plt.yticks(fontsize=14)
-plt.xlabel("Neighbourhood", fontsize=14)
-plt.ylabel('Price (Yen)', fontsize=14)
-plt.title('Average Price of Tokyo Airbnb by Neighbourhood (Without Outliers)', fontsize=20)
-plt.show()
-
-# %% Popular Neighbourhoods in Tokyo
-# Top 10 Neighbourhoods (by # of bookings)
-
-counts = df_listings["neighbourhood_cleansed"].value_counts()
-neigh_counts = counts.tolist()
-neighbourhoods = df_listings["neighbourhood_cleansed"].value_counts().index.tolist()
-df_popular_neighbourhoods = pd.DataFrame(list(zip(neighbourhoods, neigh_counts)),
-                                         columns=['neighbourhood', 'num_bookings'])
-
-plt.figure(figsize=(16,10))
-plt.bar(df_popular_neighbourhoods['neighbourhood'][:10], df_popular_neighbourhoods['num_bookings'][:10], color='lightblue')
-plt.xticks(fontsize=14)
-plt.yticks(fontsize=14)
-plt.xlabel("Neighbourhood", fontsize=14)
-plt.ylabel('Number of Bookings', fontsize=14)
-plt.title('Top 10 Neighbourhoods by Number of Bookings', fontsize=20)
-plt.show()
-
 # %% Distribution of Types of Rooms
+print()
 print(df_listings["room_type"].value_counts())
 
 num_entire = np.where(df_listings["room_type"] == "Entire home/apt")[0].size
@@ -248,6 +222,7 @@ fig1.gca().add_artist(centre_circle)
 plt.show()
 
 # %% Distribution of Cancellation Policies
+print()
 print(df_listings["cancellation_policy"].value_counts())
 
 num_strict = np.where((df_listings["cancellation_policy"] == "strict")
@@ -278,16 +253,54 @@ plt.show()
 # %% Describe numerical features
 df_listings.describe()
 
-# %%
+# %% Plotting Histograms of Each Variable
 df_listings.hist(bins=50, figsize=(40,30))
 plt.tight_layout(pad=0.4)
 plt.show()
 
-# %% Describe categorical features
-df_listings.describe(include='O')
+# %% Feature Engineering
+print("\nFeature Engineering")
 
-# %% What are the most correlated features?
-corr_matrix = df_listings.corr()
+print("Shape Before Removing Outliers: {}".format(df_listings.shape))
+
+# Remove outliers and print stats
+# df_listings_no_outliers = df_listings[df_listings['price'] < 110000]
+# df_listings_no_outliers = df_listings[df_listings['price'] < 100000]
+# df_listings_no_outliers = df_listings[df_listings['price'] < 50000]
+df_listings_no_outliers = df_listings[df_listings['price'] < 48000]
+
+# Remove unnecessary ID columns
+df_listings_no_outliers.drop('host_id', axis=1, inplace=True)
+df_listings_no_outliers.drop('scrape_id', axis=1, inplace=True)
+
+# Fill in the missing values for numerical columns.
+# Get numerical columns
+df_listings_no_outliers = df_listings_no_outliers.select_dtypes(exclude=['object'])
+
+# I am using median values to fill in the missing values.
+df_listings_no_outliers.fillna(df_listings_no_outliers.median(), inplace=True)
+
+print("Shape After Removing Outliers: {}".format(df_listings_no_outliers.shape))
+# print(df_listings_no_outliers.shape)
+# (14851, 37) < 50000
+# (14188, 37) # < 48000
+
+# %% Summary Statistics After Removing Outliers
+print()
+
+avg_price2 = np.mean(df_listings_no_outliers["price"])
+print("Average Listing Price: {} Yen".format(avg_price2))
+
+max_price2 = np.max(df_listings_no_outliers["price"])
+print("Maximum Listing Price: {} Yen".format(max_price2))
+
+min_price2 = np.min(df_listings_no_outliers["price"])
+print("Minimum Listing Price: {} Yen".format(min_price2))
+
+# %% What are the most correlated features for prices?
+# corr_matrix = df_listings.corr()
+corr_matrix = df_listings_no_outliers.corr()
+
 plt.subplots(figsize=(30,20))
 # sns.heatmap(corr_matrix, xticklabels=corr_matrix.columns, yticklabels=corr_matrix.columns,
 #             vmax=1.0, square=True, cmap="Blues")
@@ -298,19 +311,137 @@ sns.heatmap(corr_matrix, xticklabels=corr_matrix.columns, yticklabels=corr_matri
 
 plt.show()
 
+print("\nWhat are the most correlated features for prices?")
 # Get the top 10 most correlated features for prices
-corr_matrix = df_listings.corr()
-corr_matrix['price'].sort_values(ascending=False)[1:11]
+# corr_matrix = df_listings.corr()
+print(corr_matrix['price'].sort_values(ascending=False)[0:11])
 
-# %% Scatter Plot of Review Rating Versus Price
-plt.scatter(df_listings['price'], df_listings['review_scores_rating'])
-plt.xlabel('Price in Yen')
-plt.ylabel('Review Score')
-# plt.rcParams['figure.figsize'] = (32,8)
-# plt.xticks(np.arange(0, 1200000, step=30000))
-plt.title('Scatter Plot of Review Rating Versus Price')
+# %% corr() only captures linear relationships, so it's not the most reliable way to detect correlations.
+# So let's plot some of the price-related features on a scatter plot matrix.
+
+# Before Removing Outliers
+# attributes = ["price", "host_listings_count", "host_total_listings_count", 'calculated_host_listings_count_entire_homes',
+#               'calculated_host_listings_count', "accommodates", "guests_included", "extra_people",
+#               "bedrooms", "cleaning_fee", "availability_365"]
+# scatter_matrix(df_listings[attributes], figsize=(40, 40))
+
+# After Removing Outliers
+attributes = ["price", "accommodates", "guests_included", 'cleaning_fee',
+              "beds", "bedrooms"]
+
+scatter_matrix(df_listings_no_outliers[attributes], figsize=(20, 20))
 plt.show()
 
-# It seems that a high price does not lead to a high review score.
-# There are so many listings with a high score in the range between 0 and 20000 yen.
+# %%
+# features = ["accommodates", "guests_included", 'cleaning_fee', "beds", "bedrooms"]
+# features = ["accommodates", "guests_included", 'cleaning_fee', "beds", "bedrooms", "extra_people"]
+# features = ["accommodates", "guests_included", 'cleaning_fee', "beds", "bedrooms", "extra_people",
+#             "review_scores_rating", "reviews_per_month", "review_scores_cleanliness", "security_deposit"]
+# X = df_listings_no_outliers[features]
 
+# I have found that including all 39 numerical features gives the best adjusted R score.
+X = df_listings_no_outliers.drop('price', axis=1)
+y = df_listings_no_outliers[['price']]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30)
+
+
+# %% Adjusted R Squared Function
+def adjusted_r_squared(X, y, model):
+    R2 = model.score(X, y)
+    n = len(y)
+    k = X.shape[1]
+    return 1 - (1 - R2) * (n - 1) / (n - k - 1)
+
+# %% Linear Regression
+print("\nLinear Regression")
+linear_model = LinearRegression()
+
+linear_model.fit(X_train, y_train)
+
+# y_train_pred = linear_model.predict(X_train)
+y_test_pred = linear_model.predict(X_test)
+
+# Calculate deviation between actual and predicted values.
+rmse = sqrt(mean_squared_error(y_test, y_test_pred))
+print("The root mean square error calculation is: {}".format(rmse))
+
+# print("Intercept: {}".format(linear_model.intercept_))
+# print("Coefficients: {}".format(linear_model.coef_))
+
+# Return the coefficient of determination R^2 of the prediction.
+print("LM Score (R-Squared): {}".format(linear_model.score(X, y)))
+# LM Score (R-Squared): approx. 0.4430 (with every numerical feature)
+# LM Score (R-Squared): approx. 0.3975 (with top 6 price-related features)
+# LM Score (R-Squared): approx. 0.4074 (with top 10 price-related features)
+
+print("Adjusted R-Squared: {}".format(adjusted_r_squared(X, y, linear_model)))
+# Adjusted R-Squared: approx. 0.4423 (with every numerical feature)
+# Adjusted R-Squared: approx. 0.3974 (with top 6 price-related features)
+# Adjusted R-Squared: approx. 0.4070 (with top 10 price-related features)
+
+# Find the prediction R2 of RandomForestRegressor model using 5-fold cross-validation
+kfold = KFold(n_splits=5, shuffle=True)
+rf_cross_val = cross_val_score(linear_model, X, y, cv=kfold, scoring='r2')
+print(rf_cross_val)
+mean_cross_val_score = rf_cross_val.mean()
+print("The mean R2 score using 5-fold cross-validation is: {}".format(mean_cross_val_score))
+
+# Create a dataframe that has actual prices and predicted prices
+df_lm_test = pd.DataFrame({'Actual': y_test['price']})
+df_lm_test['Prediction'] = y_test_pred
+
+# Compare the first actual and predicted prices.
+df_lm_test.head(20)
+
+# %% Random Forest Regressor
+print("\nRandom Forest Regressor")
+
+rf_model = RandomForestRegressor(n_estimators=100, criterion='mse', bootstrap=True)
+
+rf_model.fit(X_train, y_train)
+
+y_train_pred = rf_model.predict(X_train)
+y_test_pred = rf_model.predict(X_test)
+
+# Calculate deviation between actual and predicted values.
+rmse = sqrt(mean_squared_error(y_test, y_test_pred))
+print("The root mean square error calculation is: {}".format(rmse))
+
+print("RF Model Score: {}".format(rf_model.score(X, y)))
+# RF Model Score: 0.8704147620744445
+
+print("RF Model Score (Adjusted): {}".format(adjusted_r_squared(X, y, rf_model)))
+# RF Model Score (Adjusted): 0.8700759172826956
+
+# Find the prediction R2 of RandomForestRegressor model using 5-fold cross-validation
+kf = KFold(n_splits=5, shuffle=True)
+rf_cross_val = cross_val_score(rf_model, X, y, cv=kf, scoring='r2')
+print(rf_cross_val)
+mean_cross_val_score = rf_cross_val.mean()
+print("The mean R2 score using 5-fold cross-validation is: {}".format(mean_cross_val_score))
+# The mean R2 score using 5-fold cross-validation is: 0.7130852814443622
+
+# Create a dataframe that has actual prices and predicted prices
+df_rf_test = pd.DataFrame({'Actual': y_test['price']})
+df_rf_test['Prediction'] = y_test_pred
+
+# Compare the first 20 actual and predicted prices.
+df_rf_test.head(20)
+
+# %% Feature Importances from the Random Forest Regression Model
+values = sorted(zip(X_train.columns, rf_model.feature_importances_), key=lambda x: x[1] * -1)
+feature_importances = pd.DataFrame(values, columns=["Name", "Score"])
+feature_importances = feature_importances.sort_values(by=['Score'], ascending=False)
+
+features = feature_importances['Name'][:10]
+y_pos = np.arange(len(features))
+scores = feature_importances['Score'][:10]
+
+plt.figure(figsize=(10, 10))
+plt.bar(y_pos, scores, align='center')
+plt.xticks(y_pos, features, rotation='vertical')
+plt.ylabel('Score')
+plt.xlabel('Features')
+plt.title('Top 10 Important Features (Random Forest Regression)')
+
+plt.show()

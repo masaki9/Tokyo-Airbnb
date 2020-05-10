@@ -79,7 +79,7 @@ plt.show()
 
 # %%
 
-def createTokenizedArray(sentences):
+def create_tokenized_array(sentences):
     # Initialize tokenizer and empty array to store modified sentences.
     tokenizer = RegexpTokenizer(r'\w+')
     tokenizedArray = []
@@ -98,10 +98,9 @@ def createTokenizedArray(sentences):
     return tokenizedArray  # send modified contents back to calling function.
 
 
-# -------------------------------------------------------------
-# Create array of words with no punctuation or stop words.
-# -------------------------------------------------------------
-def removeStopWords(tokenList):
+def remove_stop_words(tokenList):
+    # Create array of words with no punctuation or stop words.
+
     stopWords = set(stopwords.words('english'))
     shorterSentences = []  # Declare empty array of sentences.
 
@@ -122,10 +121,9 @@ def removeStopWords(tokenList):
     return shorterSentences
 
 
-# -------------------------------------------------------------
-# Removes suffixes and rebuids the sentences.
-# -------------------------------------------------------------
-def stemWords(sentenceArrays):
+def stem_words(sentenceArrays):
+    # Removes suffixes and rebuilds the sentences.
+    
     ps = PorterStemmer()
     stemmedSentences = []
 
@@ -144,7 +142,7 @@ def stemWords(sentenceArrays):
     return stemmedSentences
 
 
-def generateWordList(wordDf, scoreStart, scoreEnd, n_gram_size):
+def generate_word_list(wordDf, scoreStart, scoreEnd, n_gram_size):
     resultDf = wordDf[(wordDf['review_scores_rating'] >= scoreStart) &
                       (wordDf['review_scores_rating'] <= scoreEnd)]
 
@@ -169,10 +167,9 @@ def generateWordList(wordDf, scoreStart, scoreEnd, n_gram_size):
 
 # Text feature extraction
 
-#-------------------------------------------------------------
-# Creates a matrix of word vectors.
-#-------------------------------------------------------------
-def vectorizeList(stemmedList):
+def vectorize_list(stemmedList):
+    # Creates a matrix of word vectors.
+
     # Create CV with the Ngram range from 1 to 4.
     cv = CountVectorizer(binary=True, ngram_range=(1, 4))
 
@@ -183,7 +180,7 @@ def vectorizeList(stemmedList):
     return X
 
 # %%
-def modelAndPredict(X, target):
+def model_and_predict(X, target):
 
     model = LogisticRegression(solver='lbfgs', multi_class='auto', penalty='l2', max_iter=100)
 
@@ -211,10 +208,10 @@ def modelAndPredict(X, target):
 
     return y_test, y_prediction
 
-# %%
-# Confusion Matrix
-# Draw the confusion matrix.
-def showFormattedConfusionMatrix(y_test, y_predicted):
+# %% Confusion Matrix
+def show_confusion_matrix(y_test, y_predicted):
+    # Draw the confusion matrix.
+
     # Show simple confusion matrix with no formatting.
     cm = metrics.confusion_matrix(y_test.values, y_predicted)
     print("Simple Confusion Matrix")
@@ -250,22 +247,22 @@ def showFormattedConfusionMatrix(y_test, y_predicted):
 # %%
 
 # Prepare the data.
-tokenizedList = createTokenizedArray(df_reviews_w_comments[['comments']])
+tokenizedList = create_tokenized_array(df_reviews_w_comments[['comments']])
 
 #
 df_reviews_w_comments['comments_processed'] = tokenizedList
 #
 
 #
-df_reviews_w_comments['comments_processed'] = removeStopWords(df_reviews_w_comments['comments_processed'])
+df_reviews_w_comments['comments_processed'] = remove_stop_words(df_reviews_w_comments['comments_processed'])
 
 #
-df_reviews_w_comments['comments_processed'] = stemWords(df_reviews_w_comments['comments_processed'])
+df_reviews_w_comments['comments_processed'] = stem_words(df_reviews_w_comments['comments_processed'])
 
 # %% Find meaningful ngrams for good ratings (e.g. 90 to 100)
 #
 # # Create two column matrix.
-dfSub = df_reviews_w_comments[['review_scores_rating', 'comments_processed']]
+df_sub = df_reviews_w_comments[['review_scores_rating', 'comments_processed']]
 
 # Range of good ratings to be analyzed
 SCORE_RANGE_START = 90.0
@@ -273,16 +270,16 @@ SCORE_RANGE_END   = 100.0
 
 # Create ngram lists with # of occurrences.
 NGRAM_SIZE = 1
-unigrams = generateWordList(dfSub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
+unigrams = generate_word_list(df_sub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
 
 NGRAM_SIZE = 2
-bigrams = generateWordList(dfSub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
+bigrams = generate_word_list(df_sub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
 
 NGRAM_SIZE = 3
-trigrams = generateWordList(dfSub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
+trigrams = generate_word_list(df_sub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
 
 NGRAM_SIZE = 4
-quadgrams = generateWordList(dfSub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
+quadgrams = generate_word_list(df_sub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
 
 # %% Find meaningful ngrams for poor ratings (e.g. 0 to 55)
 
@@ -292,22 +289,22 @@ SCORE_RANGE_END   = 55.0
 
 # Create ngram lists with # of occurrences.
 NGRAM_SIZE = 1
-unigrams = generateWordList(dfSub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
+unigrams = generate_word_list(df_sub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
 
 NGRAM_SIZE = 2
-bigrams = generateWordList(dfSub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
+bigrams = generate_word_list(df_sub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
 
 NGRAM_SIZE = 3
-trigrams = generateWordList(dfSub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
+trigrams = generate_word_list(df_sub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
 
 NGRAM_SIZE = 4
-quadgrams = generateWordList(dfSub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
+quadgrams = generate_word_list(df_sub, SCORE_RANGE_START, SCORE_RANGE_END, NGRAM_SIZE)
 
 
 # %% Logistic Regression
 
 # Transforms words to numbers so they can be used in machine learning algorithms.
-vectorizedList = vectorizeList(df_reviews_w_comments['comments_processed'])
+vectorizedList = vectorize_list(df_reviews_w_comments['comments_processed'])
 
 # Number vector size: (416070, 14699630)
 # A total of 14,699,630 unique words exist across 416070 review comments.
@@ -347,10 +344,10 @@ df_reviews_w_comments['sentiment'] = df_reviews_w_comments.apply(classify_rating
 # Target is the rating that we want to predict.
 
 # X_test, y_test, y_predicted = modelAndPredict(vectorizedList, df_reviews_w_comments[['sentiment']])
-y_test, y_predicted = modelAndPredict(vectorizedList, df_reviews_w_comments[['sentiment']])
+y_test, y_predicted = model_and_predict(vectorizedList, df_reviews_w_comments[['sentiment']])
 
 # %%
-showFormattedConfusionMatrix(y_test, y_predicted)
+show_confusion_matrix(y_test, y_predicted)
 
 # %% Precision, Recall, and F1 Score
 from sklearn.metrics import precision_score, recall_score, f1_score

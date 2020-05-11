@@ -25,15 +25,15 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 1000)
 # pd.set_option('display.max_rows', None)
 
+# data_calendar = "data/calendar.csv"
+
 data_reviews = "data/reviews.csv"
 data_listings = "data/listings.csv"
-data_calendar = "data/calendar.csv"
 
 df_reviews = pd.read_csv(data_reviews, index_col=0, sep=',')
 df_listings = pd.read_csv(data_listings, index_col=0, sep=',')
 
 df_review_scores = df_listings[['review_scores_rating']]
-
 df_reviews_w_comments = pd.merge(df_review_scores, df_reviews, left_on='id', right_on='listing_id', how='inner')
 
 # %%
@@ -153,7 +153,7 @@ def generate_word_list(wordDf, scoreStart, scoreEnd, n_gram_size):
 
     counterList = Counter(ngrams(wordArray, n_gram_size)).most_common(80)
 
-    print("\n***{} N-Grams".format(n_gram_size))
+    print("\n{} N-Grams".format(n_gram_size))
     for i in range(0, len(counterList)):
         print("Occurrences: ", str(counterList[i][1]), end=" ")
         delimiter = ' '
@@ -197,7 +197,7 @@ def model_and_predict(X, target):
 
     # Get the mean accuracy on the given test data and labels.
     score = model.score(X_test, y_test)
-    print("\n\n*** The mean accuracy score is: {}".format(score))
+    print("\n\nThe mean accuracy score is: {}".format(score))
 
     # Predict target values.
     y_prediction = model.predict(X_test)
@@ -210,7 +210,6 @@ def model_and_predict(X, target):
 
 # %% Confusion Matrix
 def show_confusion_matrix(y_test, y_predicted):
-    # Draw the confusion matrix.
 
     # Show simple confusion matrix with no formatting.
     cm = metrics.confusion_matrix(y_test.values, y_predicted)
@@ -248,15 +247,8 @@ def show_confusion_matrix(y_test, y_predicted):
 
 # Prepare the data.
 tokenizedList = create_tokenized_array(df_reviews_w_comments[['comments']])
-
-#
 df_reviews_w_comments['comments_processed'] = tokenizedList
-#
-
-#
 df_reviews_w_comments['comments_processed'] = remove_stop_words(df_reviews_w_comments['comments_processed'])
-
-#
 df_reviews_w_comments['comments_processed'] = stem_words(df_reviews_w_comments['comments_processed'])
 
 # %% Find meaningful ngrams for good ratings (e.g. 90 to 100)
